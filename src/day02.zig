@@ -32,8 +32,9 @@ const SubmarineCommand = enum {
 const SubmarineState = struct {
     hPos: u32,
     depth: u32,
+    aim: u32,
 
-    pub fn readCommandStr(self: *SubmarineState, commandStr: []const u8) !void {
+    pub fn readCommandStrPart1(self: *SubmarineState, commandStr: []const u8) !void {
         var it = std.mem.tokenize(commandStr, " ");
         var command: SubmarineCommand = try SubmarineCommand.parseStr(it.next().?);
         var argument = try std.fmt.parseInt(u32, it.next().?, 10);
@@ -53,6 +54,29 @@ const SubmarineState = struct {
             },
         }
     }
+
+    pub fn readCommandStrPart2(self: *SubmarineState, commandStr: []const u8) !void {
+        var it = std.mem.tokenize(commandStr, " ");
+        var command: SubmarineCommand = try SubmarineCommand.parseStr(it.next().?);
+        var argument = try std.fmt.parseInt(u32, it.next().?, 10);
+
+        switch (command) {
+            SubmarineCommand.forward => {
+                self.hPos += argument;
+                self.depth += self.aim * argument;
+            },
+            SubmarineCommand.backward => {
+                self.hPos -= argument;
+                self.depth -= self.aim * argument;
+            },
+            SubmarineCommand.down => {
+                self.aim += argument;
+            },
+            SubmarineCommand.up => {
+                self.aim -= argument;
+            },
+        }
+    }
 };
 
 pub fn run() anyerror!void {
@@ -64,27 +88,47 @@ pub fn run() anyerror!void {
     var reader = bufferedReader.reader();
 
     // Initial state
-    var state = SubmarineState{ .hPos = 0, .depth = 0 };
+    var statePart1 = SubmarineState{ .hPos = 0, .depth = 0, .aim = 0 };
+    var statePart2 = SubmarineState{ .hPos = 0, .depth = 0, .aim = 0 };
 
     // Process commands
     var lineBuffer: [1024]u8 = undefined;
     while (try reader.readUntilDelimiterOrEof(&lineBuffer, '\n')) |line| {
-        try state.readCommandStr(line);
+        try statePart1.readCommandStrPart1(line);
+        try statePart2.readCommandStrPart2(line);
     }
 
-    log.info("Part 1:\tSubmarine horizontal pos: {d}", .{state.hPos});
-    log.info("\t\tSubmarine depth: {d}", .{state.depth});
-    log.info("\t\tProduct: {d}", .{state.hPos * state.depth});
+    log.info("Part 1:\tSubmarine horizontal pos: {d}", .{statePart1.hPos});
+    log.info("\t\tSubmarine depth: {d}", .{statePart1.depth});
+    log.info("\t\tProduct hPos*depth: {d}", .{statePart1.hPos * statePart1.depth});
+
+    log.info("Part 2:\tSubmarine horizontal pos: {d}", .{statePart2.hPos});
+    log.info("\t\tSubmarine depth: {d}", .{statePart2.depth});
+    log.info("\t\tSubmarine aim: {d}", .{statePart2.aim});
+    log.info("\t\tProduct hPos*depth: {d}", .{statePart2.hPos * statePart2.depth});
 }
 
 test "test part 1" {
-    var state = SubmarineState{ .hPos = 0, .depth = 0 };
-    try state.readCommandStr("forward 5");
-    try state.readCommandStr("down 5");
-    try state.readCommandStr("forward 8");
-    try state.readCommandStr("up 3");
-    try state.readCommandStr("down 8");
-    try state.readCommandStr("forward 2");
+    var state = SubmarineState{ .hPos = 0, .depth = 0, .aim = 0 };
+    try state.readCommandStrPart1("forward 5");
+    try state.readCommandStrPart1("down 5");
+    try state.readCommandStrPart1("forward 8");
+    try state.readCommandStrPart1("up 3");
+    try state.readCommandStrPart1("down 8");
+    try state.readCommandStrPart1("forward 2");
     try testing.expectEqual(state.hPos, 15);
     try testing.expectEqual(state.depth, 10);
+}
+
+test "test part 2" {
+    var state = SubmarineState{ .hPos = 0, .depth = 0, .aim = 0 };
+    try state.readCommandStrPart2("forward 5");
+    try state.readCommandStrPart2("down 5");
+    try state.readCommandStrPart2("forward 8");
+    try state.readCommandStrPart2("up 3");
+    try state.readCommandStrPart2("down 8");
+    try state.readCommandStrPart2("forward 2");
+    try testing.expectEqual(state.hPos, 15);
+    try testing.expectEqual(state.aim, 10);
+    try testing.expectEqual(state.depth, 60);
 }
