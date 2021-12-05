@@ -6,6 +6,44 @@ const assert = std.debug.assert;
 
 const log = std.log.scoped(.day01);
 
+pub fn run() anyerror!void {
+    // Move into main?
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = &arena.allocator;
+
+    const filepath = "data/day01_input.txt";
+    var f = try fs.cwd().openFile(filepath, fs.File.OpenFlags{ .read = true });
+    defer f.close();
+
+    const fileContents = try f.reader().readAllAlloc(allocator, 100e6);
+
+    var seriesCount: usize = 0;
+    var it = std.mem.split(fileContents, "\n");
+    while (it.next()) |line| {
+        seriesCount += 1;
+    }
+    seriesCount -= 1;
+
+    // Convert to integers
+    var series: []usize = try allocator.alloc(usize, seriesCount);
+    it = std.mem.split(fileContents, "\n");
+    var i: usize = 0;
+    while (it.next()) |line| {
+        if (i < seriesCount) {
+            series[i] = try std.fmt.parseInt(usize, line, 10);
+            i += 1;
+        }
+    }
+
+    var numIncreases = countNumIncreases(series[0..]);
+    log.info("Part 1:\tnumIncreases: {d}", .{numIncreases});
+
+    const windowSize = 3;
+    var numIncreasesWindowed = countNumIncreasesWindowed(series[0..], windowSize);
+    log.info("Part 2:\tnumIncreasesWindowed: {d}", .{numIncreasesWindowed});
+}
+
 pub fn countNumIncreases(inputSeries: []usize) usize {
     // Assert input size
 
@@ -50,44 +88,6 @@ fn countNumIncreasesWindowed(inputSeries: []usize, comptime windowSize: usize) u
         prevWindowSum = currentWindowSum;
     }
     return numIncreases;
-}
-
-pub fn run() anyerror!void {
-    // Move into main?
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = &arena.allocator;
-
-    const filepath = "data/day01_input.txt";
-    var f = try fs.cwd().openFile(filepath, fs.File.OpenFlags{ .read = true });
-    defer f.close();
-
-    const fileContents = try f.reader().readAllAlloc(allocator, 100e6);
-
-    var seriesCount: usize = 0;
-    var it = std.mem.split(fileContents, "\n");
-    while (it.next()) |line| {
-        seriesCount += 1;
-    }
-    seriesCount -= 1;
-
-    // Convert to integers
-    var series: []usize = try allocator.alloc(usize, seriesCount);
-    it = std.mem.split(fileContents, "\n");
-    var i: usize = 0;
-    while (it.next()) |line| {
-        if (i < seriesCount) {
-            series[i] = try std.fmt.parseInt(usize, line, 10);
-            i += 1;
-        }
-    }
-
-    var numIncreases = countNumIncreases(series[0..]);
-    log.info("Part 1:\tnumIncreases: {d}", .{numIncreases});
-
-    const windowSize = 3;
-    var numIncreasesWindowed = countNumIncreasesWindowed(series[0..], windowSize);
-    log.info("Part 2:\tnumIncreasesWindowed: {d}", .{numIncreasesWindowed});
 }
 
 test "test part 1" {
