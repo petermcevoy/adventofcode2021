@@ -5,7 +5,10 @@ const io = std.io;
 
 const log = std.log.scoped(.day02);
 
-const SubmarineCommandError = error{UnknownCommand};
+const SubmarineCommandError = error{
+    UnknownCommand,
+    ParseArgumentAsIntError,
+};
 
 const SubmarineCommand = enum {
     forward,
@@ -13,19 +16,28 @@ const SubmarineCommand = enum {
     up,
     down,
 
-    pub fn parseStr(str: []const u8) !SubmarineCommand {
-        if (std.mem.eql(u8, str, "forward")) {
-            return SubmarineCommand.forward;
-        } else if (std.mem.eql(u8, str, "backward")) {
-            return SubmarineCommand.backward;
-        } else if (std.mem.eql(u8, str, "up")) {
-            return SubmarineCommand.up;
-        } else if (std.mem.eql(u8, str, "down")) {
-            return SubmarineCommand.down;
+    pub fn parseStr(str: []const u8, cmd: *SubmarineCommand, amount: *u32) SubmarineCommandError!void {
+        var it = std.mem.tokenize(str, " ");
+
+        var cmdStr = it.next().?;
+        if (std.mem.eql(u8, cmdStr, "forward")) {
+            cmd.* = SubmarineCommand.forward;
+        } else if (std.mem.eql(u8, cmdStr, "backward")) {
+            cmd.* = SubmarineCommand.backward;
+        } else if (std.mem.eql(u8, cmdStr, "up")) {
+            cmd.* = SubmarineCommand.up;
+        } else if (std.mem.eql(u8, cmdStr, "down")) {
+            cmd.* = SubmarineCommand.down;
         } else {
             log.err("Unknown command: {s}", .{str});
             return SubmarineCommandError.UnknownCommand;
         }
+
+        var amountStr = it.next().?;
+        amount.* = std.fmt.parseInt(u32, amountStr, 10) catch |_| {
+            log.err("Could not parse argument as integer: {s}", .{str});
+            return SubmarineCommandError.ParseArgumentAsIntError;
+        };
     }
 };
 
@@ -34,46 +46,38 @@ const SubmarineState = struct {
     depth: u32,
     aim: u32,
 
-    pub fn readCommandStrPart1(self: *SubmarineState, commandStr: []const u8) !void {
-        var it = std.mem.tokenize(commandStr, " ");
-        var command: SubmarineCommand = try SubmarineCommand.parseStr(it.next().?);
-        var argument = try std.fmt.parseInt(u32, it.next().?, 10);
-
-        switch (command) {
+    pub fn runCommandPart1(self: *SubmarineState, cmd: SubmarineCommand, amount: u32) !void {
+        switch (cmd) {
             SubmarineCommand.forward => {
-                self.hPos += argument;
+                self.hPos += amount;
             },
             SubmarineCommand.backward => {
-                self.hPos -= argument;
+                self.hPos -= amount;
             },
             SubmarineCommand.down => {
-                self.depth += argument;
+                self.depth += amount;
             },
             SubmarineCommand.up => {
-                self.depth -= argument;
+                self.depth -= amount;
             },
         }
     }
 
-    pub fn readCommandStrPart2(self: *SubmarineState, commandStr: []const u8) !void {
-        var it = std.mem.tokenize(commandStr, " ");
-        var command: SubmarineCommand = try SubmarineCommand.parseStr(it.next().?);
-        var argument = try std.fmt.parseInt(u32, it.next().?, 10);
-
-        switch (command) {
+    pub fn runCommandPart2(self: *SubmarineState, cmd: SubmarineCommand, amount: u32) !void {
+        switch (cmd) {
             SubmarineCommand.forward => {
-                self.hPos += argument;
-                self.depth += self.aim * argument;
+                self.hPos += amount;
+                self.depth += self.aim * amount;
             },
             SubmarineCommand.backward => {
-                self.hPos -= argument;
-                self.depth -= self.aim * argument;
+                self.hPos -= amount;
+                self.depth -= self.aim * amount;
             },
             SubmarineCommand.down => {
-                self.aim += argument;
+                self.aim += amount;
             },
             SubmarineCommand.up => {
-                self.aim -= argument;
+                self.aim -= amount;
             },
         }
     }
@@ -92,10 +96,13 @@ pub fn run() anyerror!void {
     var statePart2 = SubmarineState{ .hPos = 0, .depth = 0, .aim = 0 };
 
     // Process commands
-    var lineBuffer: [1024]u8 = undefined;
+    var lineBuffer: [1024:0]u8 = undefined;
+    var cmd: SubmarineCommand = undefined;
+    var amount: u32 = undefined;
     while (try reader.readUntilDelimiterOrEof(&lineBuffer, '\n')) |line| {
-        try statePart1.readCommandStrPart1(line);
-        try statePart2.readCommandStrPart2(line);
+        try SubmarineCommand.parseStr(line, &cmd, &amount);
+        try statePart1.runCommandPart1(cmd, amount);
+        try statePart2.runCommandPart2(cmd, amount);
     }
 
     log.info("Part 1:\tSubmarine horizontal pos: {d}", .{statePart1.hPos});
@@ -109,25 +116,43 @@ pub fn run() anyerror!void {
 }
 
 test "test part 1" {
+    const example_input =
+        \\forward 5
+        \\down 5
+        \\forward 8
+        \\up 3
+        \\down 8
+        \\forward 2
+    ;
     var state = SubmarineState{ .hPos = 0, .depth = 0, .aim = 0 };
-    try state.readCommandStrPart1("forward 5");
-    try state.readCommandStrPart1("down 5");
-    try state.readCommandStrPart1("forward 8");
-    try state.readCommandStrPart1("up 3");
-    try state.readCommandStrPart1("down 8");
-    try state.readCommandStrPart1("forward 2");
+    var it = std.mem.split(example_input, "\n");
+    var cmd: SubmarineCommand = undefined;
+    var amount: u32 = undefined;
+    while (it.next()) |line| {
+        try SubmarineCommand.parseStr(line, &cmd, &amount);
+        try state.runCommandPart1(cmd, amount);
+    }
     try testing.expectEqual(state.hPos, 15);
     try testing.expectEqual(state.depth, 10);
 }
 
 test "test part 2" {
+    const example_input =
+        \\forward 5
+        \\down 5
+        \\forward 8
+        \\up 3
+        \\down 8
+        \\forward 2
+    ;
     var state = SubmarineState{ .hPos = 0, .depth = 0, .aim = 0 };
-    try state.readCommandStrPart2("forward 5");
-    try state.readCommandStrPart2("down 5");
-    try state.readCommandStrPart2("forward 8");
-    try state.readCommandStrPart2("up 3");
-    try state.readCommandStrPart2("down 8");
-    try state.readCommandStrPart2("forward 2");
+    var it = std.mem.split(example_input, "\n");
+    var cmd: SubmarineCommand = undefined;
+    var amount: u32 = undefined;
+    while (it.next()) |line| {
+        try SubmarineCommand.parseStr(line, &cmd, &amount);
+        try state.runCommandPart2(cmd, amount);
+    }
     try testing.expectEqual(state.hPos, 15);
     try testing.expectEqual(state.aim, 10);
     try testing.expectEqual(state.depth, 60);
