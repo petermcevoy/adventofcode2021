@@ -2,6 +2,9 @@ const std = @import("std");
 const testing = std.testing;
 const fs = std.fs;
 const io = std.io;
+const assert = std.debug.assert;
+
+const log = std.log.scoped(.day01);
 
 pub fn countNumIncreases(inputSeries: []usize) usize {
     // Assert input size
@@ -17,7 +20,39 @@ pub fn countNumIncreases(inputSeries: []usize) usize {
     return numIncreases;
 }
 
-pub fn run_part1() anyerror!void {
+fn countNumIncreasesWindowed(inputSeries: []usize, comptime windowSize: usize) usize {
+    assert(inputSeries.len > windowSize);
+
+    var numIncreases: usize = 0;
+    var currentWindow: [windowSize]usize = inputSeries[0..windowSize].*;
+
+    var prevWindowSum: usize = 0;
+    for (currentWindow) |value| {
+        prevWindowSum += value;
+    }
+
+    for (inputSeries[windowSize..]) |value, i| {
+        // Move all values back one and add the new value.
+        var j: usize = 0;
+        while (j < windowSize - 1) : (j += 1) {
+            currentWindow[j] = currentWindow[j + 1];
+        }
+        currentWindow[windowSize - 1] = value;
+
+        var currentWindowSum: usize = 0;
+        for (currentWindow) |sumValue| {
+            currentWindowSum += sumValue;
+        }
+
+        if (currentWindowSum > prevWindowSum) {
+            numIncreases += 1;
+        }
+        prevWindowSum = currentWindowSum;
+    }
+    return numIncreases;
+}
+
+pub fn run() anyerror!void {
     // Move into main?
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -35,7 +70,6 @@ pub fn run_part1() anyerror!void {
         seriesCount += 1;
     }
     seriesCount -= 1;
-    std.log.info("seriesCount: {d}", .{seriesCount});
 
     // Convert to integers
     var series: []usize = try allocator.alloc(usize, seriesCount);
@@ -49,17 +83,32 @@ pub fn run_part1() anyerror!void {
     }
 
     var numIncreases = countNumIncreases(series[0..]);
-    std.log.info("numIncreases: {d}", .{numIncreases});
+    log.info("Part 1:\tnumIncreases: {d}", .{numIncreases});
+
+    const windowSize = 3;
+    var numIncreasesWindowed = countNumIncreasesWindowed(series[0..], windowSize);
+    log.info("Part 2:\tnumIncreasesWindowed: {d}", .{numIncreasesWindowed});
 }
 
 test "test part 1" {
-    var testSeries: [4]usize = .{ 10, 11, 10, 11 };
+    var testSeries = [_]usize{
+        199,
+        200,
+        208,
+        210,
+        200,
+        207,
+        240,
+        269,
+        260,
+        263,
+    };
     var result = countNumIncreases(testSeries[0..]);
-    try testing.expectEqual(result, 2);
+    try testing.expectEqual(result, 7);
 }
 
-test "test empty input" {
-    var testSeries: [0]usize = .{};
-    var result = countNumIncreases(testSeries[0..]);
-    try testing.expectEqual(result, 0);
+test "test part 2" {
+    var testSeries: [10]usize = .{ 199, 200, 208, 210, 200, 207, 240, 269, 260, 263 };
+    var result = countNumIncreasesWindowed(testSeries[0..], 3);
+    try testing.expectEqual(result, 5);
 }
