@@ -6,12 +6,7 @@ const assert = std.debug.assert;
 
 const log = std.log.scoped(.day01);
 
-pub fn run() anyerror!void {
-    // Move into main?
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = &arena.allocator;
-
+pub fn run(allocator: *std.mem.Allocator) anyerror!void {
     const filepath = "data/day01_input.txt";
     var f = try fs.cwd().openFile(filepath, fs.File.OpenFlags{ .read = true });
     defer f.close();
