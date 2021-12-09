@@ -16,15 +16,25 @@ pub fn run(allocator: *std.mem.Allocator) anyerror!void {
         try lineSegmentsList.append(lineSegment);
     }
 
-    var occupancyMap = try generateOccupancyMapAlloc(allocator, lineSegmentsList.items);
-    defer allocator.free(occupancyMap);
-
-    var num2Overlaps: usize = 0;
-    for (occupancyMap) |v| {
-        if (v >= 2) num2Overlaps += 1;
+    {
+        var occupancyMap = try generateOccupancyMapAlloc(allocator, lineSegmentsList.items, false);
+        defer allocator.free(occupancyMap);
+        var num2Overlaps: usize = 0;
+        for (occupancyMap) |v| {
+            if (v >= 2) num2Overlaps += 1;
+        }
+        log.info("Part 1: Number of points with overlaps >= 2: {d}", .{num2Overlaps});
     }
 
-    log.info("Part 1: Number of points with overlaps >= 2: {d}.", .{num2Overlaps});
+    {
+        var occupancyMap = try generateOccupancyMapAlloc(allocator, lineSegmentsList.items, true);
+        defer allocator.free(occupancyMap);
+        var num2Overlaps: usize = 0;
+        for (occupancyMap) |v| {
+            if (v >= 2) num2Overlaps += 1;
+        }
+        log.info("Part 2: Number of points with overlaps >= 2: {d}", .{num2Overlaps});
+    }
 }
 
 const LineSegment = struct {
@@ -58,25 +68,36 @@ pub fn parseLineSegment(reader: anytype) !?LineSegment {
 const mapWidth = 1000;
 const mapHeight = 1000;
 
-pub fn generateOccupancyMapAlloc(allocator: *std.mem.Allocator, lineSegments: []LineSegment) ![]u8 {
+pub fn generateOccupancyMapAlloc(allocator: *std.mem.Allocator, lineSegments: []LineSegment, comptime considerDiagonals: bool) ![]u8 {
     var occupancyMap: []u8 = try allocator.alloc(u8, mapWidth * mapHeight);
     std.mem.set(u8, occupancyMap, 0);
 
     // Fill the map
-    line: for (lineSegments) |lineSegment, i| {
-        var y = min(lineSegment.y0, lineSegment.y1);
-        var y1 = max(lineSegment.y0, lineSegment.y1);
+    for (lineSegments) |lineSegment, i| {
+        var x0 = @intCast(i32, lineSegment.x0);
+        var x1 = @intCast(i32, lineSegment.x1);
+        var y0 = @intCast(i32, lineSegment.y0);
+        var y1 = @intCast(i32, lineSegment.y1);
 
-        while (y <= y1) : (y += 1) {
-            var x = min(lineSegment.x0, lineSegment.x1);
-            var x1 = max(lineSegment.x0, lineSegment.x1);
+        var dx: i32 = if (x0 < x1) 1 else -1;
+        var dy: i32 = if (y0 < y1) 1 else -1;
+        if (x0 == x1)
+            dx = 0;
+        if (y0 == y1)
+            dy = 0;
 
-            // Only consider lines that are horizontal or vertical...
-            if (!(x == x1 or y == y1)) continue :line;
+        var isAxisAligned = (x0 == x1 or y0 == y1);
+        if (!considerDiagonals and !isAxisAligned) continue;
 
-            while (x <= x1) : (x += 1) {
-                occupancyMap[y * mapWidth + x] += 1;
-            }
+        var lineLen = max(std.math.absCast(x0 - x1), std.math.absCast(y0 - y1));
+
+        var x = x0;
+        var y = y0;
+        var j: usize = 0;
+        while (j <= lineLen) : (j += 1) {
+            occupancyMap[@intCast(usize, y) * mapWidth + @intCast(usize, x)] += 1;
+            x += dx;
+            y += dy;
         }
     }
 
@@ -135,12 +156,25 @@ test "part 1" {
         try lineSegmentsList.append(lineSegment);
     }
 
-    var occupancyMap = try generateOccupancyMapAlloc(testing.allocator, lineSegmentsList.items);
-    defer testing.allocator.free(occupancyMap);
+    {
+        var occupancyMap = try generateOccupancyMapAlloc(testing.allocator, lineSegmentsList.items, false);
+        defer testing.allocator.free(occupancyMap);
 
-    var num2Overlaps: usize = 0;
-    for (occupancyMap) |v| {
-        if (v >= 2) num2Overlaps += 1;
+        var num2Overlaps: usize = 0;
+        for (occupancyMap) |v| {
+            if (v >= 2) num2Overlaps += 1;
+        }
+        try testing.expectEqual(num2Overlaps, 5);
     }
-    try testing.expectEqual(num2Overlaps, 5);
+
+    {
+        var occupancyMap = try generateOccupancyMapAlloc(testing.allocator, lineSegmentsList.items, true);
+        defer testing.allocator.free(occupancyMap);
+
+        var num2Overlaps: usize = 0;
+        for (occupancyMap) |v| {
+            if (v >= 2) num2Overlaps += 1;
+        }
+        try testing.expectEqual(num2Overlaps, 12);
+    }
 }
