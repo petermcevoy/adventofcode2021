@@ -36,7 +36,10 @@ pub fn findOptimalAlignmentPosition(initial_positions: []const i32, fuel: *i32, 
                     cost += std.math.absInt(target - pos) catch unreachable;
             },
             .part2 => {
-                // Use binomial coefficient n*(n+1)/2
+                // Use triangular number to calculate new fuel 
+                // https://en.m.wikipedia.org/wiki/Triangular_number
+                // 1 + 2 + ... + n = n*(n+1)/2
+
                 for (initial_positions) |pos| {
                     var n = std.math.absInt(target - pos) catch unreachable;
                     cost += @divTrunc(n * (n + 1), 2);
