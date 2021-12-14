@@ -9,7 +9,14 @@ pub fn run() anyerror!void {
     var num_easy_digits: u32 = countNumberOfEasyDigits(input_str);
     log.info("Part 1: {d}", .{num_easy_digits});
 
-    _ = deduceSegmentMapping(short_example);
+    _ = crackSegmentMapping(short_example);
+    //var a: [7]u8 = .{ 0, 1, 2, 3, 4, 5, 6 };
+    //var i: usize = 0;
+    //while (i < 12) : (i += 1) {
+    //    generatePermutation(7, &a);
+    //    for (a) |v| std.debug.print(" {d}", .{v});
+    //    std.debug.print("\n", .{});
+    //}
 }
 
 pub fn countNumberOfEasyDigits(input: []const u8) u32 {
@@ -42,14 +49,14 @@ pub fn countNumberOfEasyDigits(input: []const u8) u32 {
 // We store these as bitset
 // a b c d e f g -> 0 1 2 3 4 5 6
 
-const Signal = enum(u7) {
-    a = 0b1000000,
-    b = 0b0100000,
-    c = 0b0010000,
-    d = 0b0001000,
-    e = 0b0000100,
-    f = 0b0000010,
-    g = 0b0000001,
+const Signal = enum {
+    a,
+    b,
+    c,
+    d,
+    e,
+    f,
+    g,
 
     pub fn fromChar(char: u8) Signal {
         return switch (char) {
@@ -61,6 +68,18 @@ const Signal = enum(u7) {
             'f' => .f,
             'g' => .g,
             else => unreachable,
+        };
+    }
+
+    pub fn asBitCode(self: Signal) u7 {
+        return switch (self) {
+            .a => 0b1000000,
+            .b => 0b0100000,
+            .c => 0b0010000,
+            .d => 0b0001000,
+            .e => 0b0000100,
+            .f => 0b0000010,
+            .g => 0b0000001,
         };
     }
 };
@@ -78,15 +97,6 @@ const segments_used_in_digit: [10]u7 = .{
     0b1111011, // 9: a,b,c,d,f,g
 };
 
-// Givven
-//  ab:     0b1100000 (must be 1 because len == 2)
-// dab:     0b1101000 (must be 7 because len == 3) => d -> a
-// eafb:    0b1100110 (must be 4 because len == 4)
-// acedgfb: 0b1111011 (must be 8 bevause len == 7)
-
-// Consider one bit (e.g d, bit 4). Find one entry that has that bit set and one that doesn't, but with other bits the same...
-// Eg. ab and dab
-
 fn signalStrToBitMap(signal: []const u8) u7 {
     var bitmap: u7 = 0b0000000;
 
@@ -96,10 +106,40 @@ fn signalStrToBitMap(signal: []const u8) u7 {
     return bitmap;
 }
 
-fn deduceSegmentMapping(signal_output_str: []const u8) void {
+// Heap's algorithm
+// https://en.wikipedia.org/wiki/Heap's_algorithm
+pub fn generatePermutation(k: usize, a: []u8) void {
+    if (k == 1) return;
+
+    generatePermutation(k - 1, a);
+
+    var i: usize = 0;
+    while (i < k - 1) : (i += 1) {
+        if (k % 2 == 0) {
+            std.mem.swap(u8, &a[i], &a[k - 1]);
+        } else {
+            std.mem.swap(u8, &a[0], &a[k - 1]);
+        }
+        generatePermutation(k - 1, a);
+    }
+}
+
+fn mapSignal(signal: u7, mapping: [7]u8) u7 {
+    var mapped_signal: u7 = 0;
+
+    mapped_signal |= (signal & Signal.a.asBitCode()) >> @intCast(u3, mapping[0]);
+    mapped_signal |= (signal & Signal.b.asBitCode()) >> @intCast(u3, mapping[1]);
+    mapped_signal |= (signal & Signal.c.asBitCode()) >> @intCast(u3, mapping[2]);
+    mapped_signal |= (signal & Signal.d.asBitCode()) >> @intCast(u3, mapping[3]);
+    mapped_signal |= (signal & Signal.e.asBitCode()) >> @intCast(u3, mapping[4]);
+    mapped_signal |= (signal & Signal.f.asBitCode()) >> @intCast(u3, mapping[5]);
+    mapped_signal |= (signal & Signal.g.asBitCode()) >> @intCast(u3, mapping[6]);
+
+    return mapped_signal;
+}
+
+fn crackSegmentMapping(signal_output_str: []const u8) void {
     var it = std.mem.tokenize(signal_output_str, " |");
-    var mapping: [7]?u8 = .{null} ** 7;
-    var found_mapping_mask: u7 = 0;
 
     var signals: [10]u7 = .{0} ** 10;
     {
@@ -113,48 +153,40 @@ fn deduceSegmentMapping(signal_output_str: []const u8) void {
         while (i < 4) : (i += 1) output[i] = signalStrToBitMap(it.next().?);
     }
 
-    for (signals) |signal_a| {
-        var easy_digit_a: ?u8 = switch (@popCount(u7, signal_a)) {
-            2 => 1,
-            3 => 7,
-            4 => 4,
-            7 => 8,
-            else => null,
-        };
-        if (easy_digit_a == null) continue;
+    // Iterate over possible mappings.
+    var mapping: [7]u8 = .{ 0, 1, 2, 3, 4, 5, 6 };
 
-        log.info("0b{b:0>7} {d})", .{ signal_a, easy_digit_a });
+    var i_mapping: usize = 0;
+    while (i_mapping < 7 * 6 * 5 * 4 * 3 * 2 * 1) : (i_mapping += 1) {
+        for (mapping) |m| std.debug.print("{d} ", .{m});
+        std.debug.print("\n", .{});
+        for (signals) |signal| {
+            var easy_digit: ?u8 = switch (@popCount(u7, signal)) {
+                2 => 1,
+                3 => 7,
+                4 => 4,
+                7 => 8,
+                else => null,
+            };
 
-        // Try to find another signal that matches in all bits except for one.
-        var i: usize = 0;
-        while (i < 2) : (i += 1) {
-            for (signals) |signal_b| {
-                var easy_digit_b: ?u8 = switch (@popCount(u7, signal_b)) {
-                    2 => 1,
-                    3 => 7,
-                    4 => 4,
-                    7 => 8,
-                    else => null,
-                };
-
-                var tmp_signal = (signal_a & ~found_mapping_mask) ^ (signal_b & ~found_mapping_mask);
-
-                if (easy_digit_a != null and easy_digit_b != null and @popCount(u7, tmp_signal) == 1) {
-                    log.info("\t found: 0b{b:0>7} ({d})", .{ signal_b, easy_digit_b });
-
-                    // We should be able to deduce mapping here...
-                    var segments_a = segments_used_in_digit[easy_digit_a.?];
-                    var segments_b = segments_used_in_digit[easy_digit_b.?];
-
-                    var tmp_outsignal = segments_a ^ segments_b;
-                    assert(@popCount(u7, tmp_signal) == 1);
-                    log.info("\t found mapping: 0b{b:0>7} -> 0b{b:0>7}", .{ tmp_signal, tmp_outsignal });
-                    found_mapping_mask |= tmp_signal;
-                    log.info("found mapping mask: 0b{b:0>7}", .{found_mapping_mask});
+            if (easy_digit != null) {
+                // map signal and compare with segment
+                var mapped_signal = mapSignal(signal, mapping);
+                for (segments_used_in_digit) |expected_signal| {
+                    log.info("0b{b:0>7} -> 0b{b:0>7}", .{ signal, mapped_signal });
+                    if (mapped_signal == expected_signal) {
+                        log.info("match! 0b{b:0>7} -> 0b{b:0>7}", .{ signal, mapped_signal });
+                    }
                 }
             }
         }
+
+        // Try if this mapping works...
+        generatePermutation(7, &mapping);
     }
+
+    // mapping {1,2,3,4}
+    // mapping {2,1,3,4}
 
     //while (it.next()) |signal| {
     //    // Find the digits we can deduce based only on len.
@@ -196,6 +228,12 @@ const example =
 test "part 1" {
     var num_easy_digits: u32 = countNumberOfEasyDigits(example);
     try testing.expectEqual(num_easy_digits, 26);
+}
+
+test "mapping" {
+    var r = mapSignal(0b1000000, [_]u8{ 2, 1, 0, 3, 4, 5, 6 });
+    std.debug.print("{b:0>7}", .{r});
+    try testing.expectEqual(r, 0b0010000);
 }
 
 var short_example_easy = "ab dab | cdbaf";
