@@ -8,6 +8,7 @@ const day05 = @import("day05.zig");
 const day06 = @import("day06.zig");
 const day07 = @import("day07.zig");
 const day08 = @import("day08.zig");
+const day09 = @import("day09.zig");
 
 pub fn main() anyerror!void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -21,5 +22,6 @@ pub fn main() anyerror!void {
     //try day05.run(allocator);
     //try day06.run(allocator);
     //try day07.run(allocator);
-    try day08.run();
+    //try day08.run();
+    try day09.run();
 }
