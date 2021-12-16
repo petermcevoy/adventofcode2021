@@ -9,10 +9,17 @@ pub fn run() anyerror!void {
 
     var sum_num_flashes: usize = 0;
     var i: usize = 0;
-    while (i < 100) : (i += 1) {
-        sum_num_flashes += states.simulateStep();
+    var i_sync: ?usize = null;
+    while (i < 100 or i_sync == null) : (i += 1) {
+        var num_flashes = states.simulateStep();
+
+        if (i < 100) sum_num_flashes += num_flashes;
+        if (i_sync == null and num_flashes == 10 * 10) {
+            i_sync = i;
+        }
     }
     log.info("Part 1: num flashes {d}", .{sum_num_flashes});
+    log.info("Part 2: steps for first sync {d}", .{i_sync.? + 1});
 }
 
 const width = 10;
@@ -134,8 +141,16 @@ test "part 1" {
     var i: usize = 0;
     while (i < 100) : (i += 1) {
         sum_num_flashes += states.simulateStep();
-        std.debug.print("i {d}:\n", .{i});
-        states.print();
     }
     try testing.expectEqual(sum_num_flashes, 1656);
+}
+
+test "part 1" {
+    var states = OctopusStates.fromStr(example);
+    var i: usize = 0;
+    while (i < 200) : (i += 1) {
+        var num_flashes = states.simulateStep();
+        if (num_flashes == 10 * 10) break;
+    }
+    try testing.expectEqual(i + 1, 195);
 }
