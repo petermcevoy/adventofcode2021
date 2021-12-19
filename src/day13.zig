@@ -1,19 +1,25 @@
 const std = @import("std");
 const testing = std.testing;
 const assert = std.debug.assert;
-const log = std.log.scoped(.day12);
+const log = std.log.scoped(.day13);
 
 const max_points = 1000;
 pub fn run() anyerror!void {
     var input_str = @embedFile("../data/day13_input.txt");
-
     var points_buffer: [max_points]Point = undefined;
+
     var points = parsePoints(&points_buffer, input_str);
     log.info("Parsed {d} points", .{points.len});
 
-    points = processFolds(points, input_str, 1);
-    var count = countPoints(points);
+    processFolds(points, input_str, 1);
+    var count = countAndDisplayPoints(points, false);
     log.info("Part 1: num points after 1 fold: {d}", .{count});
+
+    // Part 2
+    points = parsePoints(&points_buffer, input_str);
+    processFolds(points, input_str, null);
+    var count2 = countAndDisplayPoints(points, true);
+    log.info("Part 2: num points after all folds: {d}", .{count2});
 }
 
 const Point = struct { x: i32, y: i32 };
@@ -34,13 +40,14 @@ pub fn parsePoints(points_buffer: *[max_points]Point, str: []const u8) []Point {
     return points_buffer[0..num_points];
 }
 
-pub fn processFolds(points: []Point, str: []const u8, num_folds_to_process: ?usize) []Point {
+pub fn processFolds(points: []Point, str: []const u8, num_folds_to_process: ?usize) void {
     var it_part = std.mem.split(str, "\n\n");
     _ = it_part.next().?; // Skip point declarations
 
     var it_folds = std.mem.split(it_part.next().?, "\n");
     var folds_processed: usize = 0;
     while (it_folds.next()) |line| {
+        if (line.len == 0) break; // eof
         var eql_pos = std.mem.indexOf(u8, line, "=").?;
         var axis: u8 = line[eql_pos - 1];
         var value: i32 = std.fmt.parseInt(i32, line[eql_pos + 1 .. line.len], 10) catch unreachable;
@@ -66,11 +73,9 @@ pub fn processFolds(points: []Point, str: []const u8, num_folds_to_process: ?usi
             if (folds_processed == n) break;
         }
     }
-
-    return points;
 }
 
-pub fn countPoints(points: []Point) usize {
+pub fn countAndDisplayPoints(points: []Point, display: bool) usize {
     var marks = std.bit_set.ArrayBitSet(u8, max_points * max_points).initEmpty();
     var max_x: i32 = std.math.minInt(i32);
     var max_y: i32 = std.math.minInt(i32);
@@ -93,7 +98,7 @@ pub fn countPoints(points: []Point) usize {
         marks.set(@intCast(usize, py_offsetted) * max_points + @intCast(usize, px_offsetted));
     }
 
-    if (false) { // Print out marks
+    if (display) { // Print out marks
         var y: i32 = min_y;
         while (y <= max_y) : (y += 1) {
             var py_offsetted = if (min_y < 0) y + (std.math.absInt(min_y) catch unreachable) else y;
@@ -102,7 +107,7 @@ pub fn countPoints(points: []Point) usize {
                 var px_offsetted = if (min_x < 0) x + (std.math.absInt(min_x) catch unreachable) else x;
                 if (marks.isSet(@intCast(usize, py_offsetted) * max_points + @intCast(usize, px_offsetted))) {
                     std.debug.print("#", .{});
-                } else std.debug.print(".", .{});
+                } else std.debug.print(" ", .{});
             }
             std.debug.print("\n", .{});
         }
@@ -139,7 +144,7 @@ const example =
 test "part 1" {
     var points_buffer: [max_points]Point = undefined;
     var points = parsePoints(&points_buffer, example);
-    points = processFolds(points, example, 1);
-    var count = countPoints(points);
+    processFolds(points, example, 1);
+    var count = countAndDisplayPoints(points, true);
     try testing.expectEqual(count, 17);
 }
