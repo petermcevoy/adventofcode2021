@@ -8,8 +8,11 @@ pub fn run(allocator: *std.mem.Allocator) anyerror!void {
     var graph = Graph.fromStrAlloc(allocator, input_str);
     defer graph.vertices.deinit();
     defer graph.edges.deinit();
-    var num_paths = graph.findNumPaths(allocator);
-    log.info("Part 1: num paths {d}", .{num_paths});
+    var num_paths1 = graph.findNumPaths(allocator, false);
+    log.info("Part 1: num paths {d}", .{num_paths1});
+
+    var num_paths2 = graph.findNumPaths(allocator, true);
+    log.info("Part 2: num paths {d}", .{num_paths2});
 }
 
 const start_value: [2]u8 = .{ '>', '>' };
@@ -20,7 +23,6 @@ const Graph = struct {
     edges: std.ArrayList([2]usize), // vertex indicies
 
     pub fn lookupOrCreateVertex(self: *Graph, value: [2]u8) usize {
-        // Try to find vertex with value...
         for (self.vertices.items) |v, i| {
             if (std.mem.eql(u8, &v, &value)) return i;
         }
@@ -59,7 +61,11 @@ const Graph = struct {
         return graph;
     }
 
-    pub fn findNumPaths(self: *Graph, allocator: *std.mem.Allocator) usize {
+    pub fn isBigCave(value: [2]u8) bool {
+        return value[0] >= 'A' and value[0] <= 'Z';
+    }
+
+    pub fn findNumPaths(self: *Graph, allocator: *std.mem.Allocator, allow_single_small_cave_revisit: bool) usize {
         var num_paths_found: usize = 0;
 
         var i_start = self.lookupOrCreateVertex(start_value);
@@ -78,14 +84,33 @@ const Graph = struct {
         while (search_stack.items.len > 0) {
             // pop stack
             var current_path = search_stack.pop();
+            defer current_path.deinit();
             var current_vertex = current_path.items[current_path.items.len - 1];
 
             if (current_vertex == i_end) {
-                std.debug.print("Found path\n", .{});
-                for (current_path.items) |p| std.debug.print("{s} -> ", .{self.vertices.items[p]});
-                std.debug.print("\n", .{});
                 num_paths_found += 1;
+                //std.debug.print("Found path ({d})\n", .{num_paths_found});
+                //for (current_path.items) |p| std.debug.print("{s} -> ", .{self.vertices.items[p]});
+                //std.debug.print("\n", .{});
             } else {
+
+                // For part 2.
+                var current_path_num_single_small_cave_revisits: usize = 0;
+                if (allow_single_small_cave_revisit) {
+                    // Count number of times the same small cave has been revisited
+                    for (current_path.items) |p1, i| {
+                        if (isBigCave(self.vertices.items[p1])) continue;
+                        var num_revisits: usize = 0;
+                        for (current_path.items) |p2, j| {
+                            if (i == j or isBigCave(self.vertices.items[p2])) continue;
+                            if (p1 == p2) num_revisits += 1;
+                        }
+
+                        current_path_num_single_small_cave_revisits =
+                            std.math.max(current_path_num_single_small_cave_revisits, num_revisits);
+                    }
+                }
+
                 for (self.edges.items) |e| {
                     var candidate_vertex: ?usize = null;
                     if (e[0] == current_vertex)
@@ -93,35 +118,51 @@ const Graph = struct {
                     if (e[1] == current_vertex)
                         candidate_vertex = e[0];
 
-                    if (candidate_vertex != null) {
-                        var already_visited: bool = false;
-                        for (current_path.items) |p| {
-                            var is_big_cave = (self.vertices.items[p][0] >= 'A' and self.vertices.items[p][0] <= 'Z');
-                            if (p == candidate_vertex.? and !is_big_cave) {
-                                already_visited = true;
-                                break;
-                            }
-                        }
+                    if (candidate_vertex == null) continue;
 
-                        if (candidate_vertex != null and !already_visited) {
-                            var list = std.ArrayList(usize).init(allocator);
-                            // Copy the current path and add the new candidate vertex.
-                            // TODO: Improve, copy somehow over for loop.
-                            for (current_path.items) |p| list.append(p) catch unreachable;
-                            list.append(candidate_vertex.?) catch unreachable;
-                            search_stack.append(list) catch unreachable;
+                    var candidate_has_already_been_visited: bool = false;
+                    for (current_path.items) |p| {
+                        if (p == candidate_vertex.?) {
+                            candidate_has_already_been_visited = true;
+                            break;
                         }
+                    }
+                    var allowed_to_visit: bool =
+                        isBigCave(self.vertices.items[candidate_vertex.?]) or
+                        !candidate_has_already_been_visited;
+
+                    // Extra part 2 checks
+                    if (allow_single_small_cave_revisit and !allowed_to_visit) {
+                        allowed_to_visit =
+                            !isBigCave(self.vertices.items[candidate_vertex.?]) and
+                            candidate_vertex.? != i_start and
+                            current_path_num_single_small_cave_revisits < 1;
+                    }
+
+                    if (allowed_to_visit) {
+                        var list = std.ArrayList(usize).init(allocator);
+                        // Copy the current path and add the new candidate vertex.
+                        list.appendSlice(current_path.items) catch unreachable;
+                        list.append(candidate_vertex.?) catch unreachable;
+                        search_stack.append(list) catch unreachable;
                     }
                 }
             }
-
-            // Were done with the popped path, free it.
-            current_path.deinit();
         }
 
         return num_paths_found;
     }
 };
+
+const example0 =
+    \\start-AA
+    \\start-bb
+    \\AA-cc
+    \\AA-bb
+    \\bb-dd
+    \\AA-end
+    \\bb-end
+;
 
 const example1 =
     \\dc-end
@@ -161,7 +202,7 @@ test "part 1 example 1" {
     var graph = Graph.fromStrAlloc(testing.allocator, example1);
     defer graph.vertices.deinit();
     defer graph.edges.deinit();
-    var num_paths = graph.findNumPaths(testing.allocator);
+    var num_paths = graph.findNumPaths(testing.allocator, false);
     try testing.expectEqual(num_paths, 19);
 }
 
@@ -169,6 +210,14 @@ test "part 1 example 2" {
     var graph = Graph.fromStrAlloc(testing.allocator, example2);
     defer graph.vertices.deinit();
     defer graph.edges.deinit();
-    var num_paths = graph.findNumPaths(testing.allocator);
+    var num_paths = graph.findNumPaths(testing.allocator, false);
     try testing.expectEqual(num_paths, 226);
+}
+
+test "part 2 example 1" {
+    var graph = Graph.fromStrAlloc(testing.allocator, example0);
+    defer graph.vertices.deinit();
+    defer graph.edges.deinit();
+    var num_paths = graph.findNumPaths(testing.allocator, true);
+    try testing.expectEqual(num_paths, 36);
 }
