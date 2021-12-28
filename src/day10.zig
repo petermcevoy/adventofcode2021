@@ -5,7 +5,7 @@ const log = std.log.scoped(.day10);
 
 pub fn run() anyerror!void {
     var input_str = @embedFile("../data/day10_input.txt");
-    var line_it = std.mem.tokenize(input_str, "\n");
+    var line_it = std.mem.tokenize(u8, input_str, "\n");
 
     var score_corrupt: u64 = 0;
 
@@ -147,7 +147,7 @@ const example =
 test "part 1" {
     const exptected_illegal_chars: [10]?u8 = .{ null, null, '}', null, ')', ']', null, ')', '>', null };
 
-    var line_it = std.mem.tokenize(example, "\n");
+    var line_it = std.mem.tokenize(u8, example, "\n");
     var score: u32 = 0;
     var i: usize = 0;
     while (line_it.next()) |line| {
@@ -160,7 +160,7 @@ test "part 1" {
 }
 
 test "part 2" {
-    var line_it = std.mem.tokenize(example, "\n");
+    var line_it = std.mem.tokenize(u8, example, "\n");
     var buffer: [16]u8 = undefined;
     try testing.expectEqualStrings(fixIncompleteLine(line_it.next().?, &buffer).?, "}}]])})]");
     try testing.expectEqualStrings(fixIncompleteLine(line_it.next().?, &buffer).?, ")}>]})");

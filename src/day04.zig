@@ -71,7 +71,7 @@ const BingoCard = struct {
     }
 };
 
-pub fn run(allocator: *std.mem.Allocator) anyerror!void {
+pub fn run(allocator: std.mem.Allocator) anyerror!void {
     var inputStr = @embedFile("../data/day04_input.txt");
     var reader = std.io.fixedBufferStream(inputStr).reader();
 
@@ -102,12 +102,12 @@ pub fn run(allocator: *std.mem.Allocator) anyerror!void {
     log.info("\tscore*winningNumber = {d}*{d} = {d}: ", .{ score, winningNumber, score * winningNumber.? });
 }
 
-pub fn parseInputStrNumberSequenceAlloc(allocator: *std.mem.Allocator, reader: anytype) ![]u8 {
+pub fn parseInputStrNumberSequenceAlloc(allocator: std.mem.Allocator, reader: anytype) ![]u8 {
     var parsedData = std.ArrayList(u8).init(allocator);
     var buffer: [1024]u8 = undefined;
     var lineStr = try reader.readUntilDelimiterOrEof(&buffer, '\n');
 
-    var it = std.mem.split(lineStr.?, ",");
+    var it = std.mem.split(u8, lineStr.?, ",");
     while (it.next()) |numberStr| {
         try parsedData.append(try std.fmt.parseInt(u8, numberStr, 10));
     }
@@ -124,7 +124,7 @@ pub fn parseInputStrBingoCard(reader: anytype) !?BingoCard {
     while (try reader.readUntilDelimiterOrEof(&buffer, '\n')) |line| {
         if (line.len > 0) {
             var iCol: usize = 0;
-            var it = std.mem.tokenize(line, " ");
+            var it = std.mem.tokenize(u8, line, " ");
             while (it.next()) |numberStr| {
                 values[iRow * 5 + iCol] = try std.fmt.parseInt(u8, numberStr, 10);
                 assert(iCol < 5);
@@ -159,7 +159,7 @@ pub fn findFirstWinningBingoCard(bingoCards: []BingoCard, numberSequence: []u8, 
     return null;
 }
 
-pub fn findLastWinningBingoCard(allocator: *std.mem.Allocator, bingoCards: []BingoCard, numberSequence: []u8, outWinningNumber: *?u8) !?*BingoCard {
+pub fn findLastWinningBingoCard(allocator: std.mem.Allocator, bingoCards: []BingoCard, numberSequence: []u8, outWinningNumber: *?u8) !?*BingoCard {
     var lastWinningBingoCard: ?*BingoCard = null;
 
     var winStatus: []bool = try allocator.alloc(bool, bingoCards.len);

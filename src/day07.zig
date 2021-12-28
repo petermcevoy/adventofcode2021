@@ -3,9 +3,9 @@ const testing = std.testing;
 
 const log = std.log.scoped(.day07);
 
-pub fn run(allocator: *std.mem.Allocator) anyerror!void {
+pub fn run(allocator: std.mem.Allocator) anyerror!void {
     var input_str = @embedFile("../data/day07_input.txt");
-    var it = std.mem.tokenize(input_str, ",\n");
+    var it = std.mem.tokenize(u8, input_str, ",\n");
     var initial_positions = std.ArrayList(i32).init(allocator);
     defer initial_positions.deinit();
     while (it.next()) |v| try initial_positions.append(try std.fmt.parseInt(i32, v, 10));
@@ -36,7 +36,7 @@ pub fn findOptimalAlignmentPosition(initial_positions: []const i32, fuel: *i32, 
                     cost += std.math.absInt(target - pos) catch unreachable;
             },
             .part2 => {
-                // Use triangular number to calculate new fuel 
+                // Use triangular number to calculate new fuel
                 // https://en.m.wikipedia.org/wiki/Triangular_number
                 // 1 + 2 + ... + n = n*(n+1)/2
 

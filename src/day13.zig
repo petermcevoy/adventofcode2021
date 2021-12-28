@@ -26,10 +26,10 @@ const Point = struct { x: i32, y: i32 };
 
 pub fn parsePoints(points_buffer: *[max_points]Point, str: []const u8) []Point {
     var num_points: usize = 0;
-    var it_part = std.mem.split(str, "\n\n");
-    var it_points = std.mem.tokenize(it_part.next().?, "\n");
+    var it_part = std.mem.split(u8, str, "\n\n");
+    var it_points = std.mem.tokenize(u8, it_part.next().?, "\n");
     while (it_points.next()) |line| {
-        var it_comp = std.mem.split(line, ",");
+        var it_comp = std.mem.split(u8, line, ",");
         points_buffer[num_points] = Point{
             .x = std.fmt.parseInt(i32, it_comp.next().?, 10) catch unreachable,
             .y = std.fmt.parseInt(i32, it_comp.next().?, 10) catch unreachable,
@@ -41,10 +41,10 @@ pub fn parsePoints(points_buffer: *[max_points]Point, str: []const u8) []Point {
 }
 
 pub fn processFolds(points: []Point, str: []const u8, num_folds_to_process: ?usize) void {
-    var it_part = std.mem.split(str, "\n\n");
+    var it_part = std.mem.split(u8, str, "\n\n");
     _ = it_part.next().?; // Skip point declarations
 
-    var it_folds = std.mem.split(it_part.next().?, "\n");
+    var it_folds = std.mem.split(u8, it_part.next().?, "\n");
     var folds_processed: usize = 0;
     while (it_folds.next()) |line| {
         if (line.len == 0) break; // eof

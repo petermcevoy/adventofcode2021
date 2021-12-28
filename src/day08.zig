@@ -10,7 +10,7 @@ pub fn run() anyerror!void {
     log.info("Part 1: {d}", .{num_easy_digits});
 
     var sum: u32 = 0;
-    var line_it = std.mem.tokenize(input_str, "\n");
+    var line_it = std.mem.tokenize(u8, input_str, "\n");
     while (line_it.next()) |line| {
         sum += deduceOutput(line);
     }
@@ -18,13 +18,13 @@ pub fn run() anyerror!void {
 }
 
 pub fn countNumberOfEasyDigits(input: []const u8) u32 {
-    var it_line = std.mem.tokenize(input, "|\n");
+    var it_line = std.mem.tokenize(u8, input, "|\n");
     var count: u32 = 0;
     var i: usize = 0;
     while (it_line.next()) |line| : (i += 1) {
         if (i % 2 == 0) continue; // Skip signal patterns
 
-        var output_it = std.mem.tokenize(line, " ");
+        var output_it = std.mem.tokenize(u8, line, " ");
         while (output_it.next()) |output| {
             if (output.len == 2 or // 1
                 output.len == 3 or // 7
@@ -71,7 +71,7 @@ fn signalStrToBitMap(signal: []const u8) u7 {
 fn deduceOutput(signal_output_str: []const u8) u32 {
     var scrambled_digit_signals = [_]?u7{null} ** 10;
 
-    var it = std.mem.tokenize(signal_output_str, " |");
+    var it = std.mem.tokenize(u8, signal_output_str, " |");
     var signals: [10]u7 = .{0} ** 10;
     {
         var i: usize = 0;
@@ -183,7 +183,7 @@ test "part 2" {
     try testing.expectEqual(digits_short, 5353);
 
     var sum: u32 = 0;
-    var line_it = std.mem.split(example, "\n");
+    var line_it = std.mem.split(u8, example, "\n");
     while (line_it.next()) |line| {
         sum += deduceOutput(line);
     }

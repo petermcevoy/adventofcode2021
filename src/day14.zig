@@ -7,8 +7,8 @@ pub fn run() anyerror!void {
     var input_str = @embedFile("../data/day14_input.txt");
     var rules_buffer: [100]InsertionRule = undefined;
     var rules = parseInsertionRulesFromStr(&rules_buffer, input_str[std.mem.indexOf(u8, input_str, "\n").?..]);
-    var template = std.mem.tokenize(input_str, "\n").next().?;
-    var state = makeStateFromTemplate(template, rules);
+    var template = std.mem.tokenize(u8, input_str, "\n").next().?;
+    var state = makeStateFromTemplate(template);
 
     var i: usize = 0;
     while (i < 10) : (i += 1) processStep(&state, rules);
@@ -20,7 +20,7 @@ pub fn run() anyerror!void {
 
 const State = struct { pairs: [26][26]u64, counts: [26]u64 };
 
-pub fn makeStateFromTemplate(template: []const u8, rules: []InsertionRule) State {
+pub fn makeStateFromTemplate(template: []const u8) State {
     var state = State{
         .pairs = .{.{0} ** 26} ** 26,
         .counts = .{0} ** 26,
@@ -77,7 +77,7 @@ const InsertionRule = struct {
     result: u8,
 
     pub fn fromStr(str: []const u8) @This() {
-        var it = std.mem.split(str, " -> ");
+        var it = std.mem.split(u8, str, " -> ");
         var rule: InsertionRule = undefined;
         rule.pair = it.next().?[0..2].*;
         rule.result = it.next().?[0];
@@ -88,7 +88,7 @@ const InsertionRule = struct {
 
 pub fn parseInsertionRulesFromStr(buffer: []InsertionRule, str: []const u8) []InsertionRule {
     var num_rules: usize = 0;
-    var it = std.mem.tokenize(str, "\n");
+    var it = std.mem.tokenize(u8, str, "\n");
     while (it.next()) |line| {
         buffer[num_rules] = InsertionRule.fromStr(line);
         num_rules += 1;
@@ -137,11 +137,11 @@ const example =
 ;
 
 test "part 1" {
-    var template = std.mem.tokenize(example, "\n").next().?;
+    var template = std.mem.tokenize(u8, example, "\n").next().?;
     var rules_buffer: [100]InsertionRule = undefined;
     var rules = parseInsertionRulesFromStr(&rules_buffer, example[std.mem.indexOf(u8, example, "\n").?..]);
 
-    var state = makeStateFromTemplate(template, rules); // NNCB
+    var state = makeStateFromTemplate(template); // NNCB
     try testing.expectEqualSlices(u64, &state.counts, &.{ 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 });
 
     var i: usize = 0;
@@ -165,11 +165,11 @@ test "part 1" {
 }
 
 test "part 2" {
-    var template = std.mem.tokenize(example, "\n").next().?;
+    var template = std.mem.tokenize(u8, example, "\n").next().?;
     var rules_buffer: [100]InsertionRule = undefined;
     var rules = parseInsertionRulesFromStr(&rules_buffer, example[std.mem.indexOf(u8, example, "\n").?..]);
 
-    var state = makeStateFromTemplate(template, rules); // NNCB
+    var state = makeStateFromTemplate(template); // NNCB
     var i: usize = 0;
     while (i < 40) : (i += 1) processStep(&state, rules);
     try testing.expectEqual(calcAnswer(state.counts), 2188189693529);

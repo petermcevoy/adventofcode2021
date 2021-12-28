@@ -3,7 +3,7 @@ const testing = std.testing;
 const assert = std.debug.assert;
 const log = std.log.scoped(.day12);
 
-pub fn run(allocator: *std.mem.Allocator) anyerror!void {
+pub fn run(allocator: std.mem.Allocator) anyerror!void {
     var input_str = @embedFile("../data/day12_input.txt");
     var graph = Graph.fromStrAlloc(allocator, input_str);
     defer graph.vertices.deinit();
@@ -27,18 +27,17 @@ const Graph = struct {
             if (std.mem.eql(u8, &v, &value)) return i;
         }
 
-        var is_big = value[0] >= 'A' and value[1] <= 'Z';
         self.vertices.append(value) catch unreachable;
         return self.vertices.items.len - 1;
     }
 
-    pub fn fromStrAlloc(allocator: *std.mem.Allocator, str: []const u8) Graph {
+    pub fn fromStrAlloc(allocator: std.mem.Allocator, str: []const u8) Graph {
         var graph: Graph = .{
             .vertices = std.ArrayList([2]u8).init(allocator),
             .edges = std.ArrayList([2]usize).init(allocator),
         };
 
-        var it = std.mem.tokenize(str, "\n");
+        var it = std.mem.tokenize(u8, str, "\n");
         while (it.next()) |line| {
             var split_pos = std.mem.indexOf(u8, line, "-").?;
             var from_str = line[0..split_pos];
@@ -65,7 +64,7 @@ const Graph = struct {
         return value[0] >= 'A' and value[0] <= 'Z';
     }
 
-    pub fn findNumPaths(self: *Graph, allocator: *std.mem.Allocator, allow_single_small_cave_revisit: bool) usize {
+    pub fn findNumPaths(self: *Graph, allocator: std.mem.Allocator, allow_single_small_cave_revisit: bool) usize {
         var num_paths_found: usize = 0;
 
         var i_start = self.lookupOrCreateVertex(start_value);

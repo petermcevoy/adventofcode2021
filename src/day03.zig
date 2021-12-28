@@ -4,7 +4,7 @@ const assert = std.debug.assert;
 
 const log = std.log.scoped(.day03);
 
-pub fn run(allocator: *std.mem.Allocator) anyerror!void {
+pub fn run(allocator: std.mem.Allocator) anyerror!void {
     var inputStr = @embedFile("../data/day03_input.txt");
     var data = try parseInputStr(u12, allocator, inputStr);
     defer allocator.free(data);
@@ -29,15 +29,11 @@ pub fn run(allocator: *std.mem.Allocator) anyerror!void {
     log.info("\to2*co2: {d}", .{@as(u32, oxygenRating) * @as(u32, co2ScrubberRating)});
 }
 
-pub fn parseInputStr(comptime T: type, allocator: *std.mem.Allocator, inputStr: []const u8) ![]T {
+pub fn parseInputStr(comptime T: type, allocator: std.mem.Allocator, inputStr: []const u8) ![]T {
     var parsedData = std.ArrayList(T).init(allocator);
-    var it = std.mem.split(inputStr, "\n");
+    var it = std.mem.split(u8, inputStr, "\n");
     while (it.next()) |line| {
         if (line.len == 0) continue;
-        var value: T = std.fmt.parseInt(T, line, 2) catch |err| {
-            log.err("Error when parsing line: {s}", .{line});
-            return err;
-        };
         try parsedData.append(try std.fmt.parseInt(T, line, 2));
     }
     return parsedData.toOwnedSlice();
@@ -80,7 +76,7 @@ pub fn parseGammaAndEpsilonRate(comptime T: type, data: []const T, outGamma: *T,
 }
 
 // Not very happy with this one....
-pub fn parseRating(comptime T: type, allocator: *std.mem.Allocator, data: []const T, outRating: *T, useMostCommonBit: bool) !void {
+pub fn parseRating(comptime T: type, allocator: std.mem.Allocator, data: []const T, outRating: *T, useMostCommonBit: bool) !void {
     comptime assert(T == u5 or T == u12);
 
     var filterList: []bool = try allocator.alloc(bool, data.len);
@@ -90,9 +86,10 @@ pub fn parseRating(comptime T: type, allocator: *std.mem.Allocator, data: []cons
     var numCandidates: usize = data.len;
 
     const numCols = @bitSizeOf(T);
+    const cast_type: type = if (T == u12) u4 else u3;
     var iCol: usize = 0;
     while (iCol < numCols) : (iCol += 1) {
-        var mask: T = @bitReverse(T, @as(T, 1) << @intCast(u4, iCol));
+        var mask: T = @bitReverse(T, @as(T, 1) << @intCast(cast_type, iCol));
         var iRow: usize = 0;
 
         var colSum: usize = 0;

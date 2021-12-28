@@ -57,7 +57,7 @@ pub fn HeightMap(comptime width: usize, comptime height: usize) type {
             var map = Self{
                 .height_values = [_]u8{0} ** (width * height),
             };
-            var line_it = std.mem.tokenize(str, "\n");
+            var line_it = std.mem.tokenize(u8, str, "\n");
             var y: usize = 0;
             while (line_it.next()) |line| {
                 assert(y < height);

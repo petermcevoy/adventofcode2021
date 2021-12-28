@@ -4,7 +4,7 @@ const assert = std.debug.assert;
 
 const log = std.log.scoped(.day06);
 
-pub fn run(allocator: *std.mem.Allocator) anyerror!void {
+pub fn run(allocator: std.mem.Allocator) anyerror!void {
     var inputStr = @embedFile("../data/day06_input.txt");
     var initialState = try parseInputStrAlloc(allocator, inputStr);
     defer allocator.free(initialState);
@@ -17,7 +17,7 @@ pub fn simulateNumFish(initialState: []u8, numDays: usize) !usize {
 
     // There are 9 states 0,1,2,...,8
     var states = [_]usize{0} ** 9;
-    for (states) |state, i| {
+    for (states) |_, i| {
         for (initialState) |fishState| {
             states[i] += @boolToInt(fishState == i);
         }
@@ -52,14 +52,14 @@ pub fn simulateNumFish(initialState: []u8, numDays: usize) !usize {
     return numFish;
 }
 
-pub fn parseInputStrAlloc(allocator: *std.mem.Allocator, str: []const u8) ![]u8 {
+pub fn parseInputStrAlloc(allocator: std.mem.Allocator, str: []const u8) ![]u8 {
     var stateList = std.ArrayList(u8).init(allocator);
     errdefer stateList.deinit();
 
     var strWithoutEof = str;
     if (str[str.len - 1] == 10) strWithoutEof = str[0..(str.len - 1)];
 
-    var it = std.mem.split(strWithoutEof, ",");
+    var it = std.mem.split(u8, strWithoutEof, ",");
     while (it.next()) |v| {
         try stateList.append(try std.fmt.parseInt(u8, v, 10));
     }

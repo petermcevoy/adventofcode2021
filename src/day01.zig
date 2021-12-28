@@ -6,7 +6,7 @@ const assert = std.debug.assert;
 
 const log = std.log.scoped(.day01);
 
-pub fn run(allocator: *std.mem.Allocator) anyerror!void {
+pub fn run(allocator: std.mem.Allocator) anyerror!void {
     const filepath = "data/day01_input.txt";
     var f = try fs.cwd().openFile(filepath, fs.File.OpenFlags{ .read = true });
     defer f.close();
@@ -14,15 +14,15 @@ pub fn run(allocator: *std.mem.Allocator) anyerror!void {
     const fileContents = try f.reader().readAllAlloc(allocator, 100e6);
 
     var seriesCount: usize = 0;
-    var it = std.mem.split(fileContents, "\n");
-    while (it.next()) |line| {
+    var it = std.mem.split(u8, fileContents, "\n");
+    while (it.next()) |_| {
         seriesCount += 1;
     }
     seriesCount -= 1;
 
     // Convert to integers
     var series: []usize = try allocator.alloc(usize, seriesCount);
-    it = std.mem.split(fileContents, "\n");
+    it = std.mem.split(u8, fileContents, "\n");
     var i: usize = 0;
     while (it.next()) |line| {
         if (i < seriesCount) {
@@ -64,7 +64,7 @@ fn countNumIncreasesWindowed(inputSeries: []usize, comptime windowSize: usize) u
         prevWindowSum += value;
     }
 
-    for (inputSeries[windowSize..]) |value, i| {
+    for (inputSeries[windowSize..]) |value| {
         // Move all values back one and add the new value.
         var j: usize = 0;
         while (j < windowSize - 1) : (j += 1) {

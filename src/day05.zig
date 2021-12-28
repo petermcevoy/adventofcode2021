@@ -6,7 +6,7 @@ const min = std.math.min;
 
 const log = std.log.scoped(.day05);
 
-pub fn run(allocator: *std.mem.Allocator) anyerror!void {
+pub fn run(allocator: std.mem.Allocator) anyerror!void {
     var inputStr = @embedFile("../data/day05_input.txt");
     var reader = std.io.fixedBufferStream(inputStr).reader();
 
@@ -48,12 +48,12 @@ pub fn parseLineSegment(reader: anytype) !?LineSegment {
     var buffer: [1024]u8 = undefined;
     var line = (try reader.readUntilDelimiterOrEof(&buffer, '\n')) orelse return null;
 
-    var it = std.mem.tokenize(line, " -> ");
+    var it = std.mem.tokenize(u8, line, " -> ");
     var fromStr = it.next().?;
     var toStr = it.next().?;
 
-    var itFrom = std.mem.split(fromStr, ",");
-    var itTo = std.mem.split(toStr, ",");
+    var itFrom = std.mem.split(u8, fromStr, ",");
+    var itTo = std.mem.split(u8, toStr, ",");
 
     var lineSegment = LineSegment{
         .x0 = try std.fmt.parseInt(u32, itFrom.next().?, 10),
@@ -68,12 +68,12 @@ pub fn parseLineSegment(reader: anytype) !?LineSegment {
 const mapWidth = 1000;
 const mapHeight = 1000;
 
-pub fn generateOccupancyMapAlloc(allocator: *std.mem.Allocator, lineSegments: []LineSegment, comptime considerDiagonals: bool) ![]u8 {
+pub fn generateOccupancyMapAlloc(allocator: std.mem.Allocator, lineSegments: []LineSegment, comptime considerDiagonals: bool) ![]u8 {
     var occupancyMap: []u8 = try allocator.alloc(u8, mapWidth * mapHeight);
     std.mem.set(u8, occupancyMap, 0);
 
     // Fill the map
-    for (lineSegments) |lineSegment, i| {
+    for (lineSegments) |lineSegment| {
         var x0 = @intCast(i32, lineSegment.x0);
         var x1 = @intCast(i32, lineSegment.x1);
         var y0 = @intCast(i32, lineSegment.y0);

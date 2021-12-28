@@ -17,7 +17,7 @@ const SubmarineCommand = enum {
     down,
 
     pub fn parseStr(str: []const u8, cmd: *SubmarineCommand, amount: *u32) SubmarineCommandError!void {
-        var it = std.mem.tokenize(str, " ");
+        var it = std.mem.tokenize(u8, str, " ");
 
         var cmdStr = it.next().?;
         if (std.mem.eql(u8, cmdStr, "forward")) {
@@ -34,7 +34,7 @@ const SubmarineCommand = enum {
         }
 
         var amountStr = it.next().?;
-        amount.* = std.fmt.parseInt(u32, amountStr, 10) catch |_| {
+        amount.* = std.fmt.parseInt(u32, amountStr, 10) catch {
             log.err("Could not parse argument as integer: {s}", .{str});
             return SubmarineCommandError.ParseArgumentAsIntError;
         };
@@ -125,7 +125,7 @@ test "test part 1" {
         \\forward 2
     ;
     var state = SubmarineState{ .hPos = 0, .depth = 0, .aim = 0 };
-    var it = std.mem.split(example_input, "\n");
+    var it = std.mem.split(u8, example_input, "\n");
     var cmd: SubmarineCommand = undefined;
     var amount: u32 = undefined;
     while (it.next()) |line| {
@@ -146,7 +146,7 @@ test "test part 2" {
         \\forward 2
     ;
     var state = SubmarineState{ .hPos = 0, .depth = 0, .aim = 0 };
-    var it = std.mem.split(example_input, "\n");
+    var it = std.mem.split(u8, example_input, "\n");
     var cmd: SubmarineCommand = undefined;
     var amount: u32 = undefined;
     while (it.next()) |line| {
