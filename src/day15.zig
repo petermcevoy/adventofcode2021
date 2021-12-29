@@ -1,29 +1,54 @@
 const std = @import("std");
 const testing = std.testing;
-const log = std.log.scoped(.day15);
+const stdout = std.io.getStdOut().writer();
 
 pub fn run() anyerror!void {
     var input_str = @embedFile("../data/day15_input.txt");
 
-    const map_size = 100;
-    var map: [map_size * map_size]u32 = undefined;
-    populateMapFromStr(&map, input_str);
+    var map = Map(100).fromStr(input_str);
+    var optimal_path_risk_part1: u32 = findLowestRiskPath(100, &map);
+    try stdout.print("Part 1: {d}\n", .{optimal_path_risk_part1});
 
-    var optimal_path_risk: u32 = findLowestRiskPath(map_size, &map);
-    log.info("Part 1: {d}", .{optimal_path_risk});
+    var optimal_path_risk_part2: u32 = findLowestRiskPath(100 * 5, &map);
+    try stdout.print("Part 2: {d}\n", .{optimal_path_risk_part2});
 }
 
-pub fn populateMapFromStr(map: []u32, str: []const u8) void {
-    var it_row = std.mem.tokenize(u8, str, "\n");
-    var i_row: usize = 0;
-    while (it_row.next()) |row| : (i_row += 1) {
-        for (row) |c, i_c| {
-            map[row.len * i_row + i_c] = std.fmt.parseInt(u32, &.{c}, 10) catch unreachable;
+pub fn Map(comptime template_size: usize) type {
+    return struct {
+        template: [template_size * template_size]u32,
+        template_size: usize = template_size,
+
+        pub fn fromStr(str: []const u8) @This() {
+            var it_row = std.mem.tokenize(u8, str, "\n");
+
+            var map: @This() = .{
+                .template = undefined,
+            };
+
+            var i_row: usize = 0;
+            while (i_row < template_size) : (i_row += 1) {
+                var row = it_row.next().?;
+                var i_col: usize = 0;
+                while (i_col < template_size) : (i_col += 1) {
+                    map.template[template_size * i_row + i_col] = std.fmt.parseInt(u32, &.{row[i_col]}, 10) catch unreachable;
+                }
+            }
+
+            return map;
         }
-    }
+
+        pub fn getRisk(self: *@This(), x: usize, y: usize) u32 {
+            var tile_x: usize = @divTrunc(x, template_size);
+            var tile_y: usize = @divTrunc(y, template_size);
+            var wrapped_x: usize = x % template_size;
+            var wrapped_y: usize = y % template_size;
+            var val: u32 = self.template[wrapped_y * template_size + wrapped_x];
+            return ((val + @intCast(u32, tile_x) + @intCast(u32, tile_y) - 1) % 9) + 1;
+        }
+    };
 }
 
-pub fn findLowestRiskPath(comptime map_size: u32, risk_map: *[map_size * map_size]u32) u32 {
+pub fn findLowestRiskPath(comptime map_size: usize, map: anytype) u32 {
     var visited_map = [_]bool{false} ** (map_size * map_size);
     var distance_map = [_]u32{std.math.maxInt(u32)} ** (map_size * map_size);
 
@@ -58,7 +83,7 @@ pub fn findLowestRiskPath(comptime map_size: u32, risk_map: *[map_size * map_siz
             var new_pos_index = new_pos[1] * map_size + new_pos[0];
             if (!visited_map[new_pos_index]) {
                 var current_distance = distance_map[current_pos_index];
-                var new_distance_to_neighbour = current_distance + risk_map[new_pos_index];
+                var new_distance_to_neighbour = current_distance + map.getRisk(new_pos[0], new_pos[1]);
                 var prev_marked_distance_to_neighbour = distance_map[new_pos_index];
                 if (new_distance_to_neighbour < prev_marked_distance_to_neighbour) {
                     distance_map[new_pos_index] = new_distance_to_neighbour;
@@ -71,6 +96,7 @@ pub fn findLowestRiskPath(comptime map_size: u32, risk_map: *[map_size * map_siz
         unvisted_count -= 1;
 
         // Set the visited neighbour with the smallest tentative distance as the new current_node.
+        // TODO: Speed this up with a priority queue.
         var shortest_tentative_distance_pos: ?[2]usize = null;
         var shortest_tentative_distance: u32 = std.math.maxInt(u32);
         for (distance_map) |distance, i| {
@@ -78,12 +104,12 @@ pub fn findLowestRiskPath(comptime map_size: u32, risk_map: *[map_size * map_siz
             if (distance < shortest_tentative_distance) {
                 shortest_tentative_distance = distance;
                 shortest_tentative_distance_pos = .{ i % map_size, @divTrunc(i, map_size) };
-                //std.debug.print("i: {d}, visited_map[i]: {d}, @divTrunc(i, map_size): {d}, i % map_size: {d}\n", .{ i, visited_map[i], @divTrunc(i, map_size), i % map_size });
-                //std.debug.print("shortest_distance_pos: {d}\n", .{shortest_tentative_distance_pos});
             }
         }
 
         current_pos = shortest_tentative_distance_pos.?;
+        if (unvisted_count % 2000 == 0)
+            std.debug.print("Progress: {d}%\n", .{100 - 100 * unvisted_count / (map_size * map_size)});
     }
 
     unreachable;
@@ -103,10 +129,13 @@ const example =
 ;
 
 test "part 1" {
-    const map_size = 10;
-    var map: [map_size * map_size]u32 = undefined;
-    populateMapFromStr(&map, example);
-
-    var optimal_path_risk: u32 = findLowestRiskPath(map_size, &map);
+    var map = Map(10).fromStr(example);
+    var optimal_path_risk: u32 = findLowestRiskPath(10, &map);
     try testing.expectEqual(optimal_path_risk, 40);
+}
+
+test "part 2" {
+    var map = Map(10).fromStr(example);
+    var optimal_path_risk: u32 = findLowestRiskPath(10 * 5, &map);
+    try testing.expectEqual(optimal_path_risk, 315);
 }
