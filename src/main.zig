@@ -17,9 +17,9 @@ const std = @import("std");
 const day15 = @import("day15.zig");
 
 pub fn main() anyerror!void {
-    //var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    //defer arena.deinit();
-    //const allocator = arena.allocator();
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
 
     //try day01.run(allocator);
     //try day02.run();
@@ -35,5 +35,5 @@ pub fn main() anyerror!void {
     //try day12.run(allocator);
     //try day13.run();
     //try day14.run();
-    try day15.run();
+    try day15.run(allocator);
 }
