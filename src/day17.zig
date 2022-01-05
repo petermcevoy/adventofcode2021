@@ -11,13 +11,17 @@ pub fn run() anyerror!void {
     // Y is updated like the triangular number 9+8+7+...+1 = n*(n+1)/2
     var y_max = @divExact(y_initial * (y_initial + 1), 2);
     try stdout.print("Part 1: {d}\n", .{y_max});
+
+    // Part 2: Count candidate inital velocities
+    var count = countCandateInitialVels(&area);
+    try stdout.print("Part 2: {d}\n", .{count});
 }
 
 const TargetArea = struct {
-    x0: i32,
-    x1: i32,
-    y0: i32,
-    y1: i32,
+    x0: i64,
+    x1: i64,
+    y0: i64,
+    y1: i64,
 
     pub fn fromStr(str: []const u8) @This() {
         var area = TargetArea{
@@ -40,10 +44,10 @@ const TargetArea = struct {
 };
 
 const ProbeState = struct {
-    x: i32,
-    y: i32,
-    vel_x: i32,
-    vel_y: i32,
+    x: i64,
+    y: i64,
+    vel_x: i64,
+    vel_y: i64,
 
     pub fn simulteStep(self: *@This()) void {
         self.x += self.vel_x;
@@ -54,10 +58,11 @@ const ProbeState = struct {
             self.vel_x += 1;
         }
         self.vel_y += -1;
+        //std.debug.print("Simulated Probe:\n{s}\n\n", .{self});
     }
 };
 
-pub fn doesHitTarget(target: *const TargetArea, vx: i32, vy: i32) bool {
+pub fn doesHitTarget(target: *const TargetArea, vx: i64, vy: i64) bool {
     var probe = ProbeState{
         .x = 0,
         .y = 0,
@@ -80,10 +85,25 @@ pub fn doesHitTarget(target: *const TargetArea, vx: i32, vy: i32) bool {
 
     while (true) {
         probe.simulteStep();
-        if (probe.y <= target.y1 and probe.y >= target.y0) return true;
+        if (probe.y <= target.y1 and probe.y >= target.y0) {
+            return true;
+        } else if (probe.y <= target.y0) return false;
     }
 
     unreachable;
+}
+
+pub fn countCandateInitialVels(area: *const TargetArea) usize {
+    var initial_vels_count: usize = 0;
+    var max_initial_y_vel = -area.y0 - 1;
+    var iy: i64 = area.y0;
+    while (iy <= max_initial_y_vel) : (iy += 1) {
+        var ix: i64 = 1; // asume that x is positive
+        while (ix <= area.x1) : (ix += 1) {
+            if (doesHitTarget(area, ix, iy)) initial_vels_count += 1;
+        }
+    }
+    return initial_vels_count;
 }
 
 test "common" {
@@ -117,4 +137,11 @@ test "part 1" {
     var y_initial = -area.y0 - 1;
     var y_max = @divExact(y_initial * (y_initial + 1), 2);
     try testing.expectEqual(y_max, 45);
+}
+
+test "part 2" {
+    var area = TargetArea.fromStr("target area: x=20..30, y=-10..-5");
+
+    var count = countCandateInitialVels(&area);
+    try testing.expectEqual(count, 112);
 }
